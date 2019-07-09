@@ -16,7 +16,7 @@ The models expect RGB inputs that range in [0, 1]. You should preprocess your da
 
 | Method / Dataset   |      YFCC100M      |  ImageNet |
 |--------------------|--------------------|-----------|
-| DeeperCluster | [ours](https://dl.fbaipublicfiles.com/deepcluster/ours/ours.pth.tar) | - |
+| DeeperCluster | [ours](https://dl.fbaipublicfiles.com/deepcluster/ours/ours.pth) | - |
 | DeepCluster | [deepcluster_yfcc100M](https://dl.fbaipublicfiles.com/deepcluster/deepcluster/deepcluster_flickr.pth) trained on 1.3M images | [deepcluster_imagenet](https://dl.fbaipublicfiles.com/deepcluster/vgg16/checkpoint.pth.tar) (found [here](https://github.com/facebookresearch/deepcluster)) |
 | RotNet | [rotnet_yfcc100M](https://dl.fbaipublicfiles.com/deepcluster/rotnet/rotnet_flickr.pth) | [rotnet_imagenet](https://dl.fbaipublicfiles.com/deepcluster/rotnet/rotnet_imagenet.pth) |
 
