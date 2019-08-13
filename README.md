@@ -1,7 +1,6 @@
-# DeeperCluster: Leveraging Large-Scale Uncurated Data for Unsupervised Pre-training of Visual Features
+# DeeperCluster: Unsupervised Pre-training of Image Features on Non-Curated Data 
 
-This code implements the unsupervised pre-training of convolutional neural networks, or convnets, as described in [Leveraging Large-Scale Uncurated Data for Unsupervised Pre-training of Visual Features](https://arxiv.org/abs/1905.01278).
-We denote our method by DeeperCluster.
+This code implements the unsupervised pre-training of convolutional neural networks, or convnets, as described in [Unsupervised Pre-training of Image Features on Non-Curated Data](https://arxiv.org/abs/1905.01278).
 
 ## Models
 We provide for download the following models:
@@ -169,9 +168,9 @@ The results in the paper for this experiment are obtained with training on 4 GPU
 
 ## References
 
-### Leveraging Large-Scale Uncurated Data for Unsupervised Pre-training of Visual Features
+### Unsupervised Pre-training of Image Features on Non-Curated Data
 
-[1] M. Caron, P. Bojanowski, J. Mairal, A. Joulin [*Leveraging Large-Scale Uncurated Data for Unsupervised Pre-training of Visual Features*](https://arxiv.org/abs/1905.01278)
+[1] M. Caron, P. Bojanowski, J. Mairal, A. Joulin [Unsupervised Pre-training of Image Features on Non-Curated Data](https://arxiv.org/abs/1905.01278)
 ```
 @article{caron2019leveraging,
   title={Leveraging Large-Scale Uncurated Data for Unsupervised Pre-training of Visual Features},
