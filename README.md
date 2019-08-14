@@ -75,8 +75,25 @@ python main.py
 You can look the training full documentation up with ```python main.py --help```.
 
 ### Distributed training
-This implementation has been specifically designed for multi-GPU and multi-node training and tested up to 128 GPUs distributed accross 16 nodes of 8 GPUs each.
-The total number of GPUs used for an experiment (```world_size```) must be divisible by the total number of super-classes (```super_classes```).
+This implementation, as it is, supports only distributed mode activated.
+It has been specifically designed for multi-GPU and multi-node training and tested up to 128 GPUs distributed accross 16 nodes of 8 GPUs each.
+You can run code in two different scenarios:
+
+* 1- Submit your job to a computer cluster. This code is adapted for SLURM job scheduler but you can modify it for your own scheduler.
+
+* 2- Put export `NGPU=xx; python -m torch.distributed.launch --nproc_per_node=$NGPU` before the python file you want to execute (with xx the number of gpus you want).
+For example, to run an experiment with multiple GPUs on a single machine, simply replace `python main.py` with:
+```
+export NGPU=8; python -m torch.distributed.launch --nproc_per_node=$NGPU main.py
+```
+
+The parameter `rank` is set automatically in both scenario in [utils.py](https://github.com/facebookresearch/DeeperCluster/blob/c6a54297731e1af6511b2f5d38f975e63674d6c0/src/utils.py#L42).
+The parameter `local_rank` is more or less useless.
+The parameter `world-size` needs to be set manually in scenario 1 and is set automatically in scenario 2.
+The parameter `dist-url` needs to be set manually in both scenario. Refer to pytorch distributed [doc](https://pytorch.org/docs/stable/distributed.html) to set correctly the initialization method.
+
+
+The total number of GPUs used for an experiment (```world-size```) must be divisible by the total number of super-classes (```super_classes```).
 Hence, exactly a total of ```super_classes``` training communication groups of ```world_size / super_classes``` GPUs each are created.
 The parameters of a sub-class classifier specific to a super-class are shared within the corresponding training group.
 Each training group deals only with the subset of images and the rotation angle associated with its corresponding super-class.
@@ -97,11 +114,6 @@ Hence, 2 clustering groups (in blue) are created.
 You can have a look [here](./src/utils.py#L42) for more details about how we define the different communication groups.
 The multi-node is automatically handled by SLURM.
 
-To run an experiment with multiple GPUs on a single machine, simply replace python train.py in the command above with:
-```
-export NGPU=8; python -m torch.distributed.launch --nproc_per_node=$NGPU train.py
-```
-You won't need to specify the world-size in this scenario.
 
 ### Running DeepCluster or RotNet
 Our implementation is generic enough to encompass both DeepCluster and RotNet trainings.
