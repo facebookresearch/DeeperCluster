@@ -82,14 +82,18 @@ You can run code in two different scenarios:
 * 1- Submit your job to a computer cluster. This code is adapted for SLURM job scheduler but you can modify it for your own scheduler.
 
 * 2- Put export `NGPU=xx; python -m torch.distributed.launch --nproc_per_node=$NGPU` before the python file you want to execute (with xx the number of gpus you want).
-For example, to run an experiment with multiple GPUs on a single machine, simply replace `python main.py` with:
+For example, to run an experiment with a single GPU on a single machine, simply replace `python main.py` with:
 ```
-export NGPU=8; python -m torch.distributed.launch --nproc_per_node=$NGPU main.py
+export NGPU=1; python -m torch.distributed.launch --nproc_per_node=$NGPU main.py
 ```
 
-The parameter `rank` is set automatically in both scenario in [utils.py](https://github.com/facebookresearch/DeeperCluster/blob/c6a54297731e1af6511b2f5d38f975e63674d6c0/src/utils.py#L42).
+
+The parameter `rank` is set automatically in both scenario in [utils.py](./src/utils.py#L42).
+
 The parameter `local_rank` is more or less useless.
+
 The parameter `world-size` needs to be set manually in scenario 1 and is set automatically in scenario 2.
+
 The parameter `dist-url` needs to be set manually in both scenario. Refer to pytorch distributed [doc](https://pytorch.org/docs/stable/distributed.html) to set correctly the initialization method.
 
 
