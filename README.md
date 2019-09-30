@@ -188,10 +188,10 @@ The results in the paper for this experiment are obtained with training on 4 GPU
 
 [1] M. Caron, P. Bojanowski, J. Mairal, A. Joulin [Unsupervised Pre-training of Image Features on Non-Curated Data](https://arxiv.org/abs/1905.01278)
 ```
-@article{caron2019leveraging,
-  title={Leveraging Large-Scale Uncurated Data for Unsupervised Pre-training of Visual Features},
+@inproceedings{caron2019unsupervised,
+  title={Unsupervised Pre-Training of Image Features on Non-Curated Data},
   author={Caron, Mathilde and Bojanowski, Piotr and Mairal, Julien and Joulin, Armand},
-  journal={arXiv preprint arXiv:1905.01278},
+  booktitle={Proceedings of the International Conference on Computer Vision (ICCV)},
   year={2019}
 }
 ```
