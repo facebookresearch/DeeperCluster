@@ -52,10 +52,10 @@ class DistUnifTargSampler(Sampler):
 
         # select a number of per_label data for each label
         indexes = get_indices_sparse(np.asarray(pseudo_labels))
-        for k in set_of_pseudo_labels:
+        for i, k in enumerate(set_of_pseudo_labels):
             k = int(k)
             label_indexes = indexes[k][0]
-            epoch_indexes[k * per_label: (k + 1) * per_label] = np.random.choice(
+            epoch_indexes[i * per_label: (i + 1) * per_label] = np.random.choice(
                 label_indexes,
                 per_label,
                 replace=(len(label_indexes) <= per_label)
