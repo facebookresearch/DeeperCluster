@@ -275,7 +275,7 @@ def distributed_kmeans(args, n_all, nk, cache, rank, world_size, centroids, worl
             local_counts[m] -= local_counts[k];
 
             # update the assignments
-            assignments[np.where(assignments == m.item())[0][: int(local_counts[m]//2)]] = k.cpu()
+            assignments[np.where(assignments == m.item())[0][: int(local_counts[m])]] = k.cpu()
             logger.info('cluster {} empty => split cluster {}'.format(k, m))
 
         logger.info(' # Pass[{0}]\tTime {1:.3f}\tLoss {2:.4f}'
