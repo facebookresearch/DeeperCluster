@@ -24,6 +24,7 @@ from src.slurm import init_signal_handler
 from src.trainer import train_network
 from src.utils import (bool_flag, check_parameters, end_of_epoch, fix_random_seeds,
                        init_distributed_mode, initialize_exp, restart_from_checkpoint)
+from torchvision.datasets import STL10
 
 
 def get_parser():
@@ -126,7 +127,8 @@ def main(args):
     init_signal_handler()
 
     # load data
-    dataset = YFCC100M_dataset(args.data_path, size=args.size_dataset)
+    dataset = YFCC100M_dataset(args.data_path, max_imgs=args.size_dataset)
+    # dataset = STL10('./STL_dataset', split='train', folds=None, transform=None, target_transform=None, download=True)
 
     # prepare the different data transformations
     tr_cluster, tr_train = get_data_transformations(args.rotation * 90)

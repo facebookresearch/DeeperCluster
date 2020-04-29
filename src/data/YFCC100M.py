@@ -11,62 +11,57 @@ import zipfile
 import numpy as np
 from PIL import Image
 from PIL import ImageFile
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 import torch.utils.data as data
-
-
-def loader(path_zip, file_img):
-    """
-    Load imagefile from zip.
-    """
-    with zipfile.ZipFile(path_zip, 'r') as myzip:
-        img = Image.open(myzip.open(file_img))
-    return img.convert('RGB')
+from pathlib import Path
 
 
 class YFCC100M_dataset(data.Dataset):
     """
     YFCC100M dataset.
+    
     """
-    def __init__(self, root, size, flickr_unique_ids=True, transform=None):
+
+    def __init__(self, root, max_imgs: int = None, transform=None):
+        """[summary]
+
+        Parameters
+        ----------
+        - root : [str] path to the root directory of YFCC100M
+        - max_imgs : [int], optional
+            If provided, constructs the dataset with the first `max_imgs` it finds, by default None
+        - transform : [type], optional
+            A list of PyTorch transformations, by default None
+        """
         self.root = root
         self.transform = transform
         self.sub_classes = None
 
         # remove data with uniform color and data we didn't manage to download
-        if flickr_unique_ids:
-            self.indexes = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'flickr_unique_ids.npy'))
-            self.indexes = self.indexes[:min(size, len(self.indexes))]
-        else:
-            self.indexes = np.arange(size)
+        self.indexes = self._get_images_paths(max_imgs)
 
+        if max_imgs is not None:
+            self.indexes = self.indexes[:max_imgs]
         # for subsets
         self.subset_indexes = None
 
-    def __getitem__(self, ind):
-        index = ind
+    def __getitem__(self, index):
+        # TODO: what is this?
         if self.subset_indexes is not None:
-            index = self.subset_indexes[ind]
-        index = self.indexes[index]
-
-        index = format(index, "0>8d")
-        repo = index[:2]
-        z = index[2: 5]
-        file_img = index[5:] + '.jpg'
-
-        path_zip = os.path.join(self.root, repo, z) + '.zip'
+            index = self.subset_indexes[index]
 
         # load the image
-        img = loader(path_zip, file_img)
+        img = Image.open(self.indexes[index])
 
         # apply transformation
         if self.transform is not None:
             img = self.transform(img)
 
-        # id of cluster
+        # TODO: what is this? id of cluster
         sub_class = -100
         if self.sub_classes is not None:
-            sub_class = self.sub_classes[ind]
+            sub_class = self.sub_classes[index]
 
         return img, sub_class
 
@@ -74,3 +69,11 @@ class YFCC100M_dataset(data.Dataset):
         if self.subset_indexes is not None:
             return len(self.subset_indexes)
         return len(self.indexes)
+
+    def _get_images_paths(self, max_imgs):
+        imgs = []
+        for path in Path(self.root).rglob("*.jpg"):
+            imgs.append(path.absolute())
+            if len(imgs) >= max_imgs:
+                break
+        return imgs

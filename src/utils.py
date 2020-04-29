@@ -67,7 +67,11 @@ def init_distributed_mode(args, make_communication_groups=True):
         args.world_size = int(os.environ['WORLD_SIZE'])
 
     # prepare distributed
-    dist.init_process_group(backend='nccl', init_method=args.dist_url,
+    # dist.init_process_group(backend='nccl', init_method=args.dist_url,
+    #                         world_size=args.world_size, rank=args.rank)
+
+
+    dist.init_process_group(backend='nccl', init_method="file:///home/vlad/file",
                             world_size=args.world_size, rank=args.rank)
 
     # set cuda device
