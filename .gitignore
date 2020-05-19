@@ -1,1 +1,5 @@
 .vscode/settings.json
+**/*/*.pth
+**/*/*.pyc
+**/*/*.pkl
+exp/**

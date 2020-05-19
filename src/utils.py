@@ -20,8 +20,8 @@ import torch.distributed as dist
 from .logger import create_logger, PD_Stats
 
 
-FALSY_STRINGS = {'off', 'false', '0'}
-TRUTHY_STRINGS = {'on', 'true', '1'}
+FALSY_STRINGS = {"off", "false", "0"}
+TRUTHY_STRINGS = {"on", "true", "1"}
 
 
 logger = getLogger()
@@ -56,23 +56,25 @@ def init_distributed_mode(args, make_communication_groups=True):
         - rotation
     """
 
-    args.is_slurm_job = 'SLURM_JOB_ID' in os.environ and not args.debug_slurm
+    args.is_slurm_job = "SLURM_JOB_ID" in os.environ and not args.debug_slurm
 
     if args.is_slurm_job:
-        args.rank = int(os.environ['SLURM_PROCID'])
+        args.rank = int(os.environ["SLURM_PROCID"])
     else:
         # jobs started with torch.distributed.launch
         # read environment variables
-        args.rank = int(os.environ['RANK'])
-        args.world_size = int(os.environ['WORLD_SIZE'])
+        args.rank = int(os.environ["RANK"])
+        args.world_size = int(os.environ["WORLD_SIZE"])
 
     # prepare distributed
     # dist.init_process_group(backend='nccl', init_method=args.dist_url,
     #                         world_size=args.world_size, rank=args.rank)
-
-
-    dist.init_process_group(backend='nccl', init_method="file:///home/vlad/file",
-                            world_size=args.world_size, rank=args.rank)
+    dist.init_process_group(
+        backend="nccl",
+        init_method="file:///home/vlad/file",
+        world_size=args.world_size,
+        rank=args.rank,
+    )
 
     # set cuda device
     args.gpu_to_work_on = args.rank % torch.cuda.device_count()
@@ -92,8 +94,10 @@ def init_distributed_mode(args, make_communication_groups=True):
     # prepare training groups
     training_groups = []
     for group_id in range(args.super_classes):
-        ranks = [args.training_local_world_size * group_id + i \
-                 for i in range(args.training_local_world_size)]
+        ranks = [
+            args.training_local_world_size * group_id + i
+            for i in range(args.training_local_world_size)
+        ]
         training_groups.append(dist.new_group(ranks=ranks))
 
     # compute number of super-clusters
@@ -104,15 +108,18 @@ def init_distributed_mode(args, make_communication_groups=True):
         args.nmb_super_clusters = args.super_classes
 
     # prepare clustering communication groups
-    args.clustering_local_world_size = args.training_local_world_size * \
-                                       (args.super_classes // args.nmb_super_clusters)
+    args.clustering_local_world_size = args.training_local_world_size * (
+        args.super_classes // args.nmb_super_clusters
+    )
     args.clustering_local_rank = args.rank % args.clustering_local_world_size
     args.clustering_local_world_id = args.rank // args.clustering_local_world_size
 
     clustering_groups = []
     for group_id in range(args.nmb_super_clusters):
-        ranks = [args.clustering_local_world_size * group_id + i \
-                 for i in range(args.clustering_local_world_size)]
+        ranks = [
+            args.clustering_local_world_size * group_id + i
+            for i in range(args.clustering_local_world_size)
+        ]
         clustering_groups.append(dist.new_group(ranks=ranks))
 
     # this process deals only with a certain rotation
@@ -156,28 +163,30 @@ def initialize_exp(params, *args):
     - create a panda object to log the training statistics
     """
     # dump parameters
-    pickle.dump(params, open(os.path.join(params.dump_path, 'params.pkl'), 'wb'))
+    pickle.dump(params, open(os.path.join(params.dump_path, "params.pkl"), "wb"))
 
     # create repo to store checkpoints
-    params.dump_checkpoints = os.path.join(params.dump_path, 'checkpoints')
+    params.dump_checkpoints = os.path.join(params.dump_path, "checkpoints")
     if not params.rank and not os.path.isdir(params.dump_checkpoints):
         os.mkdir(params.dump_checkpoints)
 
     # create repo to cache activations between the two stages of the hierarchical k-means
-    if not params.rank and not os.path.isdir(os.path.join(params.dump_path, 'cache')):
-        os.mkdir(os.path.join(params.dump_path, 'cache'))
+    if not params.rank and not os.path.isdir(os.path.join(params.dump_path, "cache")):
+        os.mkdir(os.path.join(params.dump_path, "cache"))
 
     # create a panda object to log loss and acc
     training_stats = PD_Stats(
-        os.path.join(params.dump_path, 'stats' + str(params.rank) + '.pkl'),
-        args,
+        os.path.join(params.dump_path, "stats" + str(params.rank) + ".pkl"), args,
     )
 
     # create a logger
-    logger = create_logger(os.path.join(params.dump_path, 'train.log'), rank=params.rank)
+    logger = create_logger(
+        os.path.join(params.dump_path, "train.log"), rank=params.rank
+    )
     logger.info("============ Initialized logger ============")
-    logger.info("\n".join("%s: %s" % (k, str(v))
-                          for k, v in sorted(dict(vars(params)).items())))
+    logger.info(
+        "\n".join("%s: %s" % (k, str(v)) for k, v in sorted(dict(vars(params)).items()))
+    )
     logger.info("The experiment will be stored in %s\n" % params.dump_path)
     logger.info("")
 
@@ -191,26 +200,28 @@ def end_of_epoch(args):
 
     def src_dst(what, cl=False):
         src = os.path.join(
-            args.dump_path,
-            what + cl * str(args.clustering_local_world_id) + '.pkl',
+            args.dump_path, what + cl * str(args.clustering_local_world_id) + ".pkl",
         )
         dst = os.path.join(
             args.dump_checkpoints,
-            what + '{}-epoch{}.pkl'.format(cl * args.clustering_local_world_id, args.epoch - 1),
+            what
+            + "{}-epoch{}.pkl".format(
+                cl * args.clustering_local_world_id, args.epoch - 1
+            ),
         )
         return src, dst
 
     # main processes only are working here
     if not args.clustering_local_rank:
-        for what in ['cluster_assignments', 'centroids']:
+        for what in ["cluster_assignments", "centroids"]:
             src, dst = src_dst(what, cl=True)
             if not (args.epoch - 1) % args.checkpoint_freq:
                 shutil.copy(src, dst)
-            if not 'centroids' in src:
+            if not "centroids" in src:
                 os.remove(src)
 
     if not args.rank:
-        for what in ['super_class_assignments', 'super_class_centroids']:
+        for what in ["super_class_assignments", "super_class_centroids"]:
             src, dst = src_dst(what)
             if not (args.epoch - 1) % args.checkpoint_freq:
                 shutil.copy(src, dst)
@@ -222,13 +233,13 @@ def restart_from_checkpoint(args, ckp_path=None, run_variables=None, **kwargs):
     Re-start from checkpoint present in experiment repo
     """
     if ckp_path is None:
-        ckp_path = os.path.join(args.dump_path, 'checkpoint.pth.tar')
+        ckp_path = os.path.join(args.dump_path, "checkpoint.pth.tar")
 
     # look for a checkpoint in exp repository
     if not os.path.isfile(ckp_path):
         return
 
-    logger.info('Found checkpoint in experiment repository')
+    logger.info("Found checkpoint in experiment repository")
 
     # open checkpoint file
     map_location = None
@@ -242,11 +253,11 @@ def restart_from_checkpoint(args, ckp_path=None, run_variables=None, **kwargs):
     for key, value in kwargs.items():
         if key in checkpoint and value is not None:
             value.load_state_dict(checkpoint[key])
-            logger.info("=> loaded {} from checkpoint '{}'"
-                        .format(key, ckp_path))
+            logger.info("=> loaded {} from checkpoint '{}'".format(key, ckp_path))
         else:
-            logger.warning("=> failed to load {} from checkpoint '{}'"
-                        .format(key, ckp_path))
+            logger.warning(
+                "=> failed to load {} from checkpoint '{}'".format(key, ckp_path)
+            )
 
     # re load variable important for the run
     if run_variables is not None:
@@ -264,10 +275,11 @@ def fix_random_seeds(seed=1993):
     np.random.seed(seed)
 
 
-class PCA():
+class PCA:
     """
     Class to  compute and apply PCA.
     """
+
     def __init__(self, dim=256, whit=0.5):
         self.dim = dim
         self.whit = whit
@@ -287,14 +299,14 @@ class PCA():
         totenergy = d.sum()
 
         # sort eigenvectors with eigenvalues order
-        idx = np.argsort(d)[::-1][:self.dim]
+        idx = np.argsort(d)[::-1][: self.dim]
         d = d[idx]
         v = v[:, idx]
 
         logger.warning("keeping %.2f %% of the energy" % (d.sum() / totenergy * 100.0))
 
         # for the whitening
-        d = np.diag(1. / d**self.whit)
+        d = np.diag(1.0 / d ** self.whit)
 
         # principal components
         self.dvt = np.dot(d, v.T)
@@ -310,7 +322,9 @@ class PCA():
         if x.is_cuda:
             if self.mean is not None:
                 x -= torch.cuda.FloatTensor(self.mean)
-            return torch.mm(torch.cuda.FloatTensor(self.dvt), x.transpose(0, 1)).transpose(0, 1)
+            return torch.mm(
+                torch.cuda.FloatTensor(self.dvt), x.transpose(0, 1)
+            ).transpose(0, 1)
 
         # input if from torch, on CPU
         if self.mean is not None:
@@ -320,6 +334,7 @@ class PCA():
 
 class AverageMeter(object):
     """computes and stores the average and current value"""
+
     def __init__(self):
         self.reset()
 
@@ -351,8 +366,10 @@ def normalize(data):
 
 def compute_M(data):
     cols = np.arange(data.size)
-    return csr_matrix((cols, (data.ravel(), cols)),
-                      shape=(data.max() + 1, data.size))
+    return csr_matrix(
+        (cols, (data.ravel(), cols)), shape=(int(data.max()) + 1, data.size)
+    )
+
 
 def get_indices_sparse(data):
     M = compute_M(data)

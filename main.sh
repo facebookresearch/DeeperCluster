@@ -7,31 +7,38 @@
 #!/bin/bash
 
 # load ids of the 95.920.149 images we managed to download 
-wget -c -P ./src/data/ "https://dl.fbaipublicfiles.com/deepcluster/flickr_unique_ids.npy" 
+# wget -c -P ./src/data/ "https://dl.fbaipublicfiles.com/deepcluster/flickr_unique_ids.npy" 
+
 
 # create experiment dump repo
-mkdir -p ./exp/deepercluster/
+EXP_DIR=./exp/deepercluster_vlad_test/
+mkdir -p $EXP_DIR
 
+DATA_PATH=/vilsrv-storage/datasets/YFCC100M/yfcc100m-downloader/data
+NGPU=1 
+
+# PRETRAINED=./downloaded_models/deepercluster/ours.pth
+URL=file:///home/vwinter/file
 # run unsupervised feature learning
-python main.py
---dump_path ./exp/deepercluster/ \
---pretrained PRETRAINED \
---data_path DATA_PATH \
---size_dataset 100000000 \
---workers 10 \
+python -m torch.distributed.launch --nproc_per_node=$NGPU main.py \
+--dump_path $EXP_DIR \
+--data_path $DATA_PATH \
+--size_dataset 10000 \
+--workers 8 \
 --sobel true \
 --lr 0.1 \
 --wd 0.00001 \
---nepochs 100 \
---batch_size 48 \
+--nepochs 10 \
+--batch_size 64 \
 --reassignment 3 \
---dim_pca 4096 \
---super_classes 16 \
---rotnet true \
---k 320000 \
+--dim_pca 256 \
+--super_classes 1 \
+--rotnet false \
+--k 512 \
 --warm_restart false \
 --use_faiss true \
 --niter 10 \
---world-size 64 \
---dist-url DIST_URL
-				 
+--dist-url $URL \
+--checkpoint_freq 4
+# --pretrained PRETRAINED \
+

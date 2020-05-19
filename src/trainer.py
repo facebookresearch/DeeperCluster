@@ -10,6 +10,7 @@ import os
 import shutil
 import time
 
+from tqdm import tqdm
 import numpy as np
 import torch
 import torch.distributed as dist
@@ -27,6 +28,7 @@ class DistUnifTargSampler(Sampler):
     """
     Distributively samples elements based on a uniform distribution over the labels.
     """
+
     def __init__(self, total_size, pseudo_labels, num_replicas, rank, seed=31):
 
         np.random.seed(seed)
@@ -55,10 +57,8 @@ class DistUnifTargSampler(Sampler):
         for i, k in enumerate(set_of_pseudo_labels):
             k = int(k)
             label_indexes = indexes[k][0]
-            epoch_indexes[i * per_label: (i + 1) * per_label] = np.random.choice(
-                label_indexes,
-                per_label,
-                replace=(len(label_indexes) <= per_label)
+            epoch_indexes[i * per_label : (i + 1) * per_label] = np.random.choice(
+                label_indexes, per_label, replace=(len(label_indexes) <= per_label)
             )
 
         # make sure indexes are integers
@@ -67,10 +67,12 @@ class DistUnifTargSampler(Sampler):
         # shuffle the indexes
         np.random.shuffle(epoch_indexes)
 
-        self.epoch_indexes = epoch_indexes[:self.total_size]
+        self.epoch_indexes = epoch_indexes[: self.total_size]
 
         # this process only deals with this subset
-        self.process_ind = self.epoch_indexes[self.rank:self.total_size:self.num_replicas]
+        self.process_ind = self.epoch_indexes[
+            self.rank : self.total_size : self.num_replicas
+        ]
 
     def __iter__(self):
         return iter(self.process_ind)
@@ -121,7 +123,7 @@ def train_network(args, models, optimizers, dataset):
     cel = nn.CrossEntropyLoss().cuda()
     relu = torch.nn.ReLU().cuda()
 
-    for iter_epoch, (inp, target) in enumerate(loader):
+    for iter_epoch, (inp, target) in tqdm(enumerate(loader), desc="Epochs:"):
         # start at iter start_iter
         if iter_epoch < args.start_iter:
             continue
@@ -142,8 +144,9 @@ def train_network(args, models, optimizers, dataset):
 
         # forward on super-class prediction layer
         super_class_output = models[1](inp)
-        sc_target = args.training_local_world_id + \
-                    0 * torch.cuda.LongTensor(args.batch_size)
+        sc_target = args.training_local_world_id + 0 * torch.cuda.LongTensor(
+            args.batch_size
+        )
         loss_superclass = cel(super_class_output, sc_target)
 
         loss = loss_subclass + loss_superclass
@@ -162,10 +165,10 @@ def train_network(args, models, optimizers, dataset):
         # log
 
         # signal received, relaunch experiment
-        if os.environ['SIGNAL_RECEIVED'] == 'True':
+        if os.environ["SIGNAL_RECEIVED"] == "True":
             save_checkpoint(args, iter_epoch + 1, models, optimizers)
             if not args.rank:
-                trigger_job_requeue(os.path.join(args.dump_path, 'checkpoint.pth.tar'))
+                trigger_job_requeue(os.path.join(args.dump_path, "checkpoint.pth.tar"))
 
         # regular checkpoints
         if iter_epoch and iter_epoch % 1000 == 0:
@@ -189,19 +192,29 @@ def train_network(args, models, optimizers, dataset):
 
         # verbose
         if iter_epoch % 100 == 0:
-            logger.info('Epoch[{0}] - Iter: [{1}/{2}]\t'
-                        'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                        'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                        'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                        'Prec {log_top1.val:.3f} ({log_top1.avg:.3f})\t'
-                        'Super-class loss: {sc_loss.val:.3f} ({sc_loss.avg:.3f})\t'
-                        'Super-class prec: {sc_prec.val:.3f} ({sc_prec.avg:.3f})\t'
-                        'Intra super-class loss: {los.val:.3f} ({los.avg:.3f})\t'
-                        'Intra super-class prec: {prec.val:.3f} ({prec.avg:.3f})\t'
-                        .format(args.epoch, iter_epoch, len(loader), batch_time=batch_time,
-                                data_time=data_time, loss=log_loss, log_top1=log_top1,
-                                sc_loss=log_loss_superclass, sc_prec=log_top1_superclass,
-                                los=log_loss_subclass, prec=log_top1_subclass))
+            logger.info(
+                "Epoch[{0}] - Iter: [{1}/{2}]\t"
+                "Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t"
+                "Data {data_time.val:.3f} ({data_time.avg:.3f})\t"
+                "Loss {loss.val:.4f} ({loss.avg:.4f})\t"
+                "Prec {log_top1.val:.3f} ({log_top1.avg:.3f})\t"
+                "Super-class loss: {sc_loss.val:.3f} ({sc_loss.avg:.3f})\t"
+                "Super-class prec: {sc_prec.val:.3f} ({sc_prec.avg:.3f})\t"
+                "Intra super-class loss: {los.val:.3f} ({los.avg:.3f})\t"
+                "Intra super-class prec: {prec.val:.3f} ({prec.avg:.3f})\t".format(
+                    args.epoch,
+                    iter_epoch,
+                    len(loader),
+                    batch_time=batch_time,
+                    data_time=data_time,
+                    loss=log_loss,
+                    log_top1=log_top1,
+                    sc_loss=log_loss_superclass,
+                    sc_prec=log_top1_superclass,
+                    los=log_loss_subclass,
+                    prec=log_top1_subclass,
+                )
+            )
 
     # end of epoch
     args.start_iter = 0
@@ -212,42 +225,57 @@ def train_network(args, models, optimizers, dataset):
     if not args.rank:
         if not (args.epoch - 1) % args.checkpoint_freq:
             shutil.copyfile(
-                os.path.join(args.dump_path, 'checkpoint.pth.tar'),
-                os.path.join(args.dump_checkpoints,
-                             'checkpoint' + str(args.epoch - 1) + '.pth.tar'),
+                os.path.join(args.dump_path, "checkpoint.pth.tar"),
+                os.path.join(
+                    args.dump_checkpoints,
+                    "checkpoint" + str(args.epoch - 1) + ".pth.tar",
+                ),
             )
 
-    return (args.epoch - 1,
-            args.epoch * len(loader),
-            log_top1.avg, log_loss.avg,
-            log_top1_superclass.avg, log_loss_superclass.avg,
-            log_top1_subclass.avg, log_loss_subclass.avg,
-            )
+    return (
+        args.epoch - 1,
+        args.epoch * len(loader),
+        log_top1.avg,
+        log_loss.avg,
+        log_top1_superclass.avg,
+        log_loss_superclass.avg,
+        log_top1_subclass.avg,
+        log_loss_subclass.avg,
+    )
 
 
-def save_checkpoint(args, iter_epoch, models, optimizers, path=''):
+def save_checkpoint(args, iter_epoch, models, optimizers, path=""):
     if not os.path.isfile(path):
-        path = os.path.join(args.dump_path, 'checkpoint.pth.tar')
+        path = os.path.join(args.dump_path, "checkpoint.pth.tar")
 
     # main process saves the training state
     if not args.rank:
-        torch.save({
-            'epoch': args.epoch,
-            'start_iter': iter_epoch,
-            'state_dict': models[0].state_dict(),
-            'optimizer': optimizers[0].state_dict(),
-            'pred_layer_state_dict': models[1].state_dict(),
-            'optimizer_pred_layer': optimizers[1].state_dict(),
-        }, path)
+        torch.save(
+            {
+                "epoch": args.epoch,
+                "start_iter": iter_epoch,
+                "state_dict": models[0].state_dict(),
+                "optimizer": optimizers[0].state_dict(),
+                "pred_layer_state_dict": models[1].state_dict(),
+                "optimizer_pred_layer": optimizers[1].state_dict(),
+            },
+            path,
+        )
 
     # main local training process saves the last layer
     if not args.training_local_rank:
-        torch.save({
-            'epoch': args.epoch,
-            'start_iter': iter_epoch,
-            'state_dict': models[-1].state_dict(),
-            'optimizer': optimizers[-1].state_dict(),
-        }, os.path.join(args.dump_path, str(args.training_local_world_id) + '-pred_layer.pth.tar'))
+        torch.save(
+            {
+                "epoch": args.epoch,
+                "start_iter": iter_epoch,
+                "state_dict": models[-1].state_dict(),
+                "optimizer": optimizers[-1].state_dict(),
+            },
+            os.path.join(
+                args.dump_path,
+                str(args.training_local_world_id) + "-pred_layer.pth.tar",
+            ),
+        )
 
 
 def accuracy(args, output, target, sc_output=None):
@@ -263,7 +291,9 @@ def accuracy(args, output, target, sc_output=None):
         if sc_output is not None:
             _, pred = sc_output.topk(1, 1, True, True)
             pred = pred.t()
-            target = args.training_local_world_id + 0 * torch.cuda.LongTensor(batch_size)
+            target = args.training_local_world_id + 0 * torch.cuda.LongTensor(
+                batch_size
+            )
             correct_sc = pred.eq(target.view(1, -1).expand_as(pred))
             correct *= correct_sc
 
@@ -306,11 +336,17 @@ def validate_network(val_loader, models, args):
             end = time.perf_counter()
 
             if i % 100 == 0:
-                logger.info('Test: [{0}/{1}]\t'
-                            'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                            'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                            'Acc@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-                            .format(i, len(val_loader), batch_time=batch_time,
-                                    loss=losses, top1=top1))
+                logger.info(
+                    "Test: [{0}/{1}]\t"
+                    "Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t"
+                    "Loss {loss.val:.4f} ({loss.avg:.4f})\t"
+                    "Acc@1 {top1.val:.3f} ({top1.avg:.3f})\t".format(
+                        i,
+                        len(val_loader),
+                        batch_time=batch_time,
+                        loss=losses,
+                        top1=top1,
+                    )
+                )
 
     return (top1.avg.item(), losses.avg)

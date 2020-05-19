@@ -52,7 +52,7 @@ class YFCC100M_dataset(data.Dataset):
             index = self.subset_indexes[index]
 
         # load the image
-        img = Image.open(self.indexes[index])
+        img = Image.open(self.indexes[index]).convert("RGB")
 
         # apply transformation
         if self.transform is not None:
